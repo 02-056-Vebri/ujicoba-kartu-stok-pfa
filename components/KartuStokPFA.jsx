@@ -515,7 +515,6 @@ export default function KartuStokPFA() {
         showToast(`Tidak ada transaksi pada periode ${periodLabel} untuk produk ini.`);
         return;
       }
-      // rows[0] = [judul], rows[1] = baris kosong, rows[2] = header, rows[3+] = data
       const rows = buildSheetRows(`${selectedProduct.name} - ${periodLabel}`, displayedTxns, unit);
       await exportExcelProfessional(
         rows.slice(2),
@@ -699,24 +698,24 @@ export default function KartuStokPFA() {
   }
 
   return (
-    <div className="ks-root">
+    <div className={`ks-root${!role ? " ks-login-theme" : ""}`}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
         .ks-root {
           position: relative;
-          --bg: #14181c;
-          --panel: #1b2126;
-          --panel-alt: #212830;
-          --border: #2b333b;
-          --text: #e9edf0;
-          --muted: #8b96a1;
-          --accent: #e8a33d;
-          --accent-dim: rgba(232,163,61,0.14);
-          --positive: #4fa98a;
-          --positive-dim: rgba(79,169,138,0.14);
-          --negative: #d9694f;
-          --negative-dim: rgba(217,105,79,0.14);
+          --bg: #eef1f7;
+          --panel: #ffffff;
+          --panel-alt: #f4f6fa;
+          --border: #e3e7ee;
+          --text: #101828;
+          --muted: #667085;
+          --accent: #2563eb;
+          --accent-dim: rgba(37,99,235,0.10);
+          --positive: #16a34a;
+          --positive-dim: rgba(22,163,74,0.12);
+          --negative: #dc2626;
+          --negative-dim: rgba(220,38,38,0.12);
           font-family: 'Inter', sans-serif;
           background: var(--bg);
           color: var(--text);
@@ -753,7 +752,7 @@ export default function KartuStokPFA() {
         .ks-add-product-wrap { padding: 0 12px 10px; border-bottom: 1px solid var(--border); }
         .ks-add-product-btn { width: 100%; font-size: 12.5px; padding: 7px; }
         .ks-search-btn {
-          background: var(--accent); color: #17140d; border: none; padding: 0 14px; cursor: pointer;
+          background: var(--accent); color: #ffffff; border: none; padding: 0 14px; cursor: pointer;
           font-size: 14px; display: flex; align-items: center; justify-content: center;
         }
         .ks-search-btn:hover { filter: brightness(1.08); }
@@ -774,7 +773,7 @@ export default function KartuStokPFA() {
         .ks-headrow { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
         .ks-product-name { font-family: 'Oswald', sans-serif; font-size: 24px; font-weight: 600; letter-spacing: 0.01em; }
         .ks-btn {
-          background: var(--accent); color: #17140d; border: none; border-radius: 6px; padding: 9px 16px;
+          background: var(--accent); color: #ffffff; border: none; border-radius: 6px; padding: 9px 16px;
           font-size: 13.5px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif;
         }
         .ks-btn:hover { filter: brightness(1.08); }
@@ -825,12 +824,12 @@ export default function KartuStokPFA() {
         .ks-cal-day.empty { cursor: default; }
         .ks-cal-day:not(.empty):hover { background: var(--panel-alt); }
         .ks-cal-day.today { outline: 1px solid var(--border); }
-        .ks-cal-day.selected { background: var(--accent); color: #17140d; font-weight: 700; }
+        .ks-cal-day.selected { background: var(--accent); color: #ffffff; font-weight: 700; }
         .ks-cal-day.has-data::after {
           content: ""; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
           width: 4px; height: 4px; border-radius: 50%; background: var(--positive);
         }
-        .ks-cal-day.selected.has-data::after { background: #17140d; }
+        .ks-cal-day.selected.has-data::after { background: #ffffff; }
         .ks-cal-actions { display: flex; gap: 8px; margin-top: 10px; }
         .ks-btn.small { padding: 6px 10px; font-size: 12px; }
         .ks-table-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
@@ -842,7 +841,7 @@ export default function KartuStokPFA() {
         }
         table.ks-table tbody td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
         table.ks-table tbody tr:last-child td { border-bottom: none; }
-        table.ks-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+        table.ks-table tbody tr:hover { background: rgba(16,24,40,0.025); }
         .ks-mono { font-family: 'JetBrains Mono', monospace; }
         .ks-in { color: var(--positive); }
         .ks-out { color: var(--negative); }
@@ -931,11 +930,72 @@ export default function KartuStokPFA() {
           background: var(--panel-alt); color: var(--text); border: 1px solid var(--border);
           border-radius: 6px; padding: 7px 10px; font-size: 13px; font-family: 'Inter', sans-serif; cursor: pointer;
         }
+
+        /* ---------- Tema terang khusus halaman login (redesain) ---------- */
+        .ks-login-theme {
+          --bg: #eef1f7;
+          --panel: #ffffff;
+          --panel-alt: #f4f6fa;
+          --border: #e3e7ee;
+          --text: #101828;
+          --muted: #667085;
+          --accent: #2563eb;
+          --accent-dim: rgba(37,99,235,0.10);
+          --positive: #16a34a;
+          --positive-dim: rgba(22,163,74,0.12);
+          --negative: #dc2626;
+          --negative-dim: rgba(220,38,38,0.12);
+          background: linear-gradient(180deg, #f0f3f9 0%, #e6ebf5 100%);
+        }
+        .ks-login-theme .ks-login-wrap { padding: 40px 20px; }
+        .ks-login-theme .ks-login-card {
+          width: 380px;
+          border-radius: 18px;
+          padding: 38px 34px 32px;
+          border: 1px solid var(--border);
+          box-shadow: 0 24px 48px -18px rgba(16,24,40,0.22), 0 2px 10px rgba(16,24,40,0.05);
+        }
+        .ks-login-logo {
+          width: 52px; height: 52px; border-radius: 14px; margin: 0 auto 18px;
+          display: flex; align-items: center; justify-content: center;
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+          box-shadow: 0 10px 20px -8px rgba(37,99,235,0.55);
+        }
+        .ks-login-theme .ks-login-title { text-align: center; font-size: 20px; color: #0f172a; }
+        .ks-login-theme .ks-login-sub { text-align: center; }
+        .ks-login-theme .ks-login-choice { border-radius: 12px; padding: 15px 16px; transition: all .15s ease; }
+        .ks-login-theme .ks-login-choice:hover {
+          border-color: var(--accent); background: var(--accent-dim);
+          transform: translateY(-1px); box-shadow: 0 8px 16px -8px rgba(37,99,235,0.3);
+        }
+        .ks-login-theme .ks-login-choice-title { color: #0f172a; }
+        .ks-login-theme .ks-login-form input {
+          border-radius: 9px; border: 1px solid var(--border); background: #f9fafb;
+          padding: 10px 12px; color: #101828; transition: all .15s ease;
+        }
+        .ks-login-theme .ks-login-form input:focus {
+          outline: none; border-color: var(--accent); background: #fff;
+          box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+        }
+        .ks-login-theme .ks-btn { border-radius: 9px; }
+        .ks-login-theme .ks-btn:not(.ghost) { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+        .ks-login-theme .ks-btn:not(.ghost):hover { background: #1d4ed8; border-color: #1d4ed8; }
+        .ks-login-theme .ks-btn.ghost { background: #fff; color: #374151; border: 1px solid var(--border); }
+        .ks-login-theme .ks-btn.ghost:hover { background: #f4f6fa; }
+        .ks-login-theme .ks-pw-toggle { color: var(--muted); }
+        .ks-login-theme .ks-form-error { color: var(--negative); }
       `}</style>
 
       {!role ? (
         <div className="ks-login-wrap">
           <div className="ks-login-card">
+            <div className="ks-login-logo">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 2h6" />
+                <path d="M10 2v6.34a2 2 0 0 1-.4 1.2L5.2 15.8A3 3 0 0 0 7.6 21h8.8a3 3 0 0 0 2.4-5.2l-4.4-6.26a2 2 0 0 1-.4-1.2V2" />
+                <path d="M6.5 15h11" />
+              </svg>
+            </div>
             <div className="ks-login-title">Stock Card — Paraformaldehyde</div>
             <div className="ks-login-sub">Masuk untuk melanjutkan</div>
 
