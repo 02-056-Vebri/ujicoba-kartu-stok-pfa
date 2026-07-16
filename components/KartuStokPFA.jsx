@@ -50,6 +50,8 @@ function monthLabel(key) {
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
+// Prefix Lot No otomatis dari tanggal: 2 digit tahun + huruf bulan (A=Jan ... L=Des) + 2 digit tanggal
+// Contoh: 2023-12-22 -> "23L22"
 function getLotPrefix(dateStr) {
   if (!dateStr) return "";
   const [y, m, d] = dateStr.split("-");
@@ -57,7 +59,7 @@ function getLotPrefix(dateStr) {
   const yy = y.slice(-2);
   const monthNum = parseInt(m, 10);
   if (!monthNum || monthNum < 1 || monthNum > 12) return "";
-  const monthLetter = String.fromCharCode(64 + monthNum);
+  const monthLetter = String.fromCharCode(64 + monthNum); // 1->A, 2->B ... 12->L
   return `${yy}${monthLetter}${d}`;
 }
 function numFmt(n) {
@@ -76,6 +78,7 @@ function getPackagingUnit(name) {
   if (m) return `ZAK ${m[1]}`;
   return "Zak";
 }
+// Produk yang beratnya nggak tercantum eksplisit di nama, tapi berat per satuannya sudah diketahui
 const KNOWN_UNIT_WEIGHTS = {
   "PFA 86%": 25,
   "PFA 88%": 25,
@@ -95,8 +98,10 @@ function getUnitWeight(name) {
   return null;
 }
 
+// Nomor referensi data contoh dari awal pengembangan prototype — otomatis dibersihkan kalau masih ketemu
 const LEGACY_DEMO_REFS = ["EXT25-00207", "PA25-08160"];
 
+// ---------- Helper untuk fitur Resume Bulanan (semua produk sekaligus) ----------
 function lastDayOfMonthStr(year, monthIndex) {
   const days = new Date(year, monthIndex + 1, 0).getDate();
   return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(days).padStart(2, "0")}`;
@@ -143,14 +148,15 @@ function buildSheetRows(productName, balancedTxns, unit) {
   return rows;
 }
 
+// Ganti username/password di bawah ini dengan yang rahasia, hanya dikasih tau ke staff & kepala bagian yang bersangkutan
 const ACCOUNTS = [
   { username: "margaretta", password: "staff2026", name: "Margaretta (Staff Gudang)" },
   { username: "kepalabagian", password: "kabag2026", name: "Kepala Bagian" },
 ];
 
 export default function KartuStokPFA() {
-  const [role, setRole] = useState(null);
-  const [loginStep, setLoginStep] = useState("choose");
+  const [role, setRole] = useState(null); // null | 'editor' | 'viewer'
+  const [loginStep, setLoginStep] = useState("choose"); // 'choose' | 'password'
   const [userInput, setUserInput] = useState("");
   const [pwInput, setPwInput] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -182,15 +188,15 @@ export default function KartuStokPFA() {
   const [toast, setToast] = useState(null);
   const [formError, setFormError] = useState("");
   const [monthlyOpen, setMonthlyOpen] = useState(false);
-  const [filterMode, setFilterMode] = useState("all");
+  const [filterMode, setFilterMode] = useState("all"); // 'all' | 'day' | 'month' | 'year' | 'range'
   const [filterValue, setFilterValue] = useState("");
   const [rangeFrom, setRangeFrom] = useState("");
   const [rangeTo, setRangeTo] = useState("");
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [exportScope, setExportScope] = useState("current");
+  const [exportScope, setExportScope] = useState("current"); // 'current' | 'all'
   const now = new Date();
   const [viewYear, setViewYear] = useState(now.getFullYear());
-  const [viewMonth, setViewMonth] = useState(now.getMonth());
+  const [viewMonth, setViewMonth] = useState(now.getMonth()); // 0-indexed
   const [resumeOpen, setResumeOpen] = useState(false);
   const [resumeLoading, setResumeLoading] = useState(false);
   const [resumeExporting, setResumeExporting] = useState(false);
@@ -285,6 +291,7 @@ export default function KartuStokPFA() {
     try {
       const res = await getItem(`txns:${productId}`);
       let parsed = res ? JSON.parse(res.value) : [];
+      // Bersihkan otomatis data contoh dari awal pengembangan prototype (bukan data asli dari staff)
       if (LEGACY_DEMO_REFS.length) {
         const isLegacyDemo = parsed.length > 0 && parsed.every((t) => LEGACY_DEMO_REFS.includes(t.ref));
         if (isLegacyDemo) {
@@ -324,18 +331,14 @@ export default function KartuStokPFA() {
     }
   }, [showToast]);
 
-  // ============================================================
-  // OPTIMASI: ambil data semua produk SEKALIGUS (paralel) pakai
-  // Promise.all, bukan satu-satu bergantian (for...await berurutan).
-  // Ini yang bikin export "Semua Produk" & "Resume Bulanan" jadi
-  // jauh lebih cepat, terutama kalau jenis produknya banyak.
-  // ============================================================
   const loadResumeData = useCallback(async (year, monthIndex) => {
     setResumeLoading(true);
     try {
       const monthKeyStr = `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
       const endOfMonth = lastDayOfMonthStr(year, monthIndex);
 
+      // Ambil dulu produk mana aja yang datanya belum ada di cache (txnsByProduct),
+      // lalu fetch semuanya SEKALIGUS (paralel), bukan satu-satu bergantian.
       const needFetch = PRODUCTS.filter((p) => !txnsByProduct[p.id]);
       const fetchResults = await Promise.all(
         needFetch.map(async (p) => {
@@ -422,6 +425,7 @@ export default function KartuStokPFA() {
   async function handleResumeExport() {
     setResumeExporting(true);
     try {
+      // rows[0] = [judul], rows[1] = baris kosong, rows[2] = header, rows[3+] = data
       const rows = buildResumeSheetRows(resumeMonthLabel, resumeRows);
       await exportExcelResume(
         rows.slice(2),
@@ -517,6 +521,7 @@ export default function KartuStokPFA() {
         showToast(`Tidak ada transaksi pada periode ${periodLabel} untuk produk ini.`);
         return;
       }
+      // rows[0] = [judul], rows[1] = baris kosong, rows[2] = header, rows[3+] = data
       const rows = buildSheetRows(`${selectedProduct.name} - ${periodLabel}`, displayedTxns, unit);
       await exportExcelProfessional(
         rows.slice(2),
@@ -531,7 +536,7 @@ export default function KartuStokPFA() {
     setExporting(true);
     try {
       // Ambil dulu produk mana aja yang datanya belum ada di cache,
-      // lalu fetch SEKALIGUS secara paralel (bukan satu-satu bergantian).
+      // lalu fetch SEKALIGUS secara paralel (bukan satu-satu bergantian) biar lebih cepat.
       const needFetch = PRODUCTS.filter((p) => !txnsByProduct[p.id]);
       const fetchResults = await Promise.all(
         needFetch.map(async (p) => {
@@ -710,24 +715,24 @@ export default function KartuStokPFA() {
   }
 
   return (
-    <div className={`ks-root${!role ? " ks-login-theme" : ""}`}>
+    <div className="ks-root ks-login-theme">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
         .ks-root {
           position: relative;
-          --bg: #eef1f7;
-          --panel: #ffffff;
-          --panel-alt: #f4f6fa;
-          --border: #e3e7ee;
-          --text: #101828;
-          --muted: #667085;
-          --accent: #2563eb;
-          --accent-dim: rgba(37,99,235,0.10);
-          --positive: #16a34a;
-          --positive-dim: rgba(22,163,74,0.12);
-          --negative: #dc2626;
-          --negative-dim: rgba(220,38,38,0.12);
+          --bg: #14181c;
+          --panel: #1b2126;
+          --panel-alt: #212830;
+          --border: #2b333b;
+          --text: #e9edf0;
+          --muted: #8b96a1;
+          --accent: #e8a33d;
+          --accent-dim: rgba(232,163,61,0.14);
+          --positive: #4fa98a;
+          --positive-dim: rgba(79,169,138,0.14);
+          --negative: #d9694f;
+          --negative-dim: rgba(217,105,79,0.14);
           font-family: 'Inter', sans-serif;
           background: var(--bg);
           color: var(--text);
@@ -764,7 +769,7 @@ export default function KartuStokPFA() {
         .ks-add-product-wrap { padding: 0 12px 10px; border-bottom: 1px solid var(--border); }
         .ks-add-product-btn { width: 100%; font-size: 12.5px; padding: 7px; }
         .ks-search-btn {
-          background: var(--accent); color: #ffffff; border: none; padding: 0 14px; cursor: pointer;
+          background: var(--accent); color: #17140d; border: none; padding: 0 14px; cursor: pointer;
           font-size: 14px; display: flex; align-items: center; justify-content: center;
         }
         .ks-search-btn:hover { filter: brightness(1.08); }
@@ -785,7 +790,7 @@ export default function KartuStokPFA() {
         .ks-headrow { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
         .ks-product-name { font-family: 'Oswald', sans-serif; font-size: 24px; font-weight: 600; letter-spacing: 0.01em; }
         .ks-btn {
-          background: var(--accent); color: #ffffff; border: none; border-radius: 6px; padding: 9px 16px;
+          background: var(--accent); color: #17140d; border: none; border-radius: 6px; padding: 9px 16px;
           font-size: 13.5px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif;
         }
         .ks-btn:hover { filter: brightness(1.08); }
@@ -836,12 +841,12 @@ export default function KartuStokPFA() {
         .ks-cal-day.empty { cursor: default; }
         .ks-cal-day:not(.empty):hover { background: var(--panel-alt); }
         .ks-cal-day.today { outline: 1px solid var(--border); }
-        .ks-cal-day.selected { background: var(--accent); color: #ffffff; font-weight: 700; }
+        .ks-cal-day.selected { background: var(--accent); color: #17140d; font-weight: 700; }
         .ks-cal-day.has-data::after {
           content: ""; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
           width: 4px; height: 4px; border-radius: 50%; background: var(--positive);
         }
-        .ks-cal-day.selected.has-data::after { background: #ffffff; }
+        .ks-cal-day.selected.has-data::after { background: #17140d; }
         .ks-cal-actions { display: flex; gap: 8px; margin-top: 10px; }
         .ks-btn.small { padding: 6px 10px; font-size: 12px; }
         .ks-table-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
@@ -853,7 +858,7 @@ export default function KartuStokPFA() {
         }
         table.ks-table tbody td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
         table.ks-table tbody tr:last-child td { border-bottom: none; }
-        table.ks-table tbody tr:hover { background: rgba(16,24,40,0.025); }
+        table.ks-table tbody tr:hover { background: rgba(255,255,255,0.02); }
         .ks-mono { font-family: 'JetBrains Mono', monospace; }
         .ks-in { color: var(--positive); }
         .ks-out { color: var(--negative); }
@@ -943,106 +948,139 @@ export default function KartuStokPFA() {
           border-radius: 6px; padding: 7px 10px; font-size: 13px; font-family: 'Inter', sans-serif; cursor: pointer;
         }
 
-        /* ---------- Tema terang khusus halaman login (redesain) ---------- */
+        /* ---------- Tema halaman login (sesuai desain Figma PT. Dover Chemical) ---------- */
         .ks-login-theme {
           --bg: #eef1f7;
           --panel: #ffffff;
           --panel-alt: #f4f6fa;
-          --border: #e3e7ee;
+          --border: #d7dbe3;
           --text: #101828;
-          --muted: #667085;
+          --muted: #6b7280;
           --accent: #2563eb;
           --accent-dim: rgba(37,99,235,0.10);
           --positive: #16a34a;
           --positive-dim: rgba(22,163,74,0.12);
           --negative: #dc2626;
           --negative-dim: rgba(220,38,38,0.12);
-          background: linear-gradient(180deg, #f0f3f9 0%, #e6ebf5 100%);
         }
-        .ks-login-theme .ks-login-wrap { padding: 40px 20px; }
+        .ks-login-theme .ks-login-wrap {
+          padding: 40px 20px;
+          background-image: linear-gradient(rgba(0,0,0,0.32), rgba(0,0,0,0.32)), url('/bg-plant.jpg');
+          background-size: cover;
+          background-position: center;
+        }
         .ks-login-theme .ks-login-card {
-          width: 380px;
+          width: 420px;
           border-radius: 18px;
-          padding: 38px 34px 32px;
-          border: 1px solid var(--border);
-          box-shadow: 0 24px 48px -18px rgba(16,24,40,0.22), 0 2px 10px rgba(16,24,40,0.05);
+          padding: 34px 38px 30px;
+          border: none;
+          text-align: center;
+          box-shadow: 0 30px 60px -20px rgba(0,0,0,0.45), 0 4px 14px rgba(0,0,0,0.15);
         }
-        .ks-login-logo {
-          width: 52px; height: 52px; border-radius: 14px; margin: 0 auto 18px;
-          display: flex; align-items: center; justify-content: center;
-          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-          box-shadow: 0 10px 20px -8px rgba(37,99,235,0.55);
+        .ks-login-logo-img {
+          width: 130px;
+          height: auto;
+          display: block;
+          margin: 0 auto 8px;
         }
-        .ks-login-theme .ks-login-title { text-align: center; font-size: 20px; color: #0f172a; }
-        .ks-login-theme .ks-login-sub { text-align: center; }
-        .ks-login-theme .ks-login-choice { border-radius: 12px; padding: 15px 16px; transition: all .15s ease; }
+        .ks-login-company {
+          font-family: 'Inter', sans-serif;
+          font-size: 15px;
+          font-weight: 600;
+          letter-spacing: 0.03em;
+          color: #4b5563;
+          text-transform: uppercase;
+          margin-bottom: 18px;
+        }
+        .ks-login-theme .ks-login-title {
+          text-align: center; font-size: 15px; letter-spacing: 0.04em; color: #111827;
+          text-transform: uppercase; font-weight: 600; font-family: 'Inter', sans-serif;
+        }
+        .ks-login-system-name {
+          font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 600;
+          color: #111827; margin-top: 2px;
+        }
+        .ks-login-theme .ks-login-sub { text-align: center; margin-top: 8px; margin-bottom: 26px; color: #9ca3af; }
+        .ks-login-theme .ks-login-choice {
+          border-radius: 12px; padding: 13px 16px; transition: all .15s ease;
+          display: flex; align-items: center; justify-content: center; gap: 10px;
+          font-size: 14.5px; font-weight: 500; border: 1px solid var(--border);
+        }
         .ks-login-theme .ks-login-choice:hover {
-          border-color: var(--accent); background: var(--accent-dim);
-          transform: translateY(-1px); box-shadow: 0 8px 16px -8px rgba(37,99,235,0.3);
+          border-color: var(--accent); background: var(--accent); color: #fff;
         }
-        .ks-login-theme .ks-login-choice-title { color: #0f172a; }
+        .ks-login-theme .ks-login-choice-title { color: inherit; font-weight: 500; font-size: 14.5px; }
         .ks-login-theme .ks-login-form input {
-          border-radius: 9px; border: 1px solid var(--border); background: #f9fafb;
-          padding: 10px 12px; color: #101828; transition: all .15s ease;
+          border-radius: 12px; border: 1px solid var(--border); background: #fff;
+          padding: 12px 14px; color: #101828; transition: all .15s ease; font-size: 13.5px;
         }
         .ks-login-theme .ks-login-form input:focus {
-          outline: none; border-color: var(--accent); background: #fff;
+          outline: none; border-color: var(--accent);
           box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
         }
-        .ks-login-theme .ks-btn { border-radius: 9px; }
-        .ks-login-theme .ks-btn:not(.ghost) { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-        .ks-login-theme .ks-btn:not(.ghost):hover { background: #1d4ed8; border-color: #1d4ed8; }
-        .ks-login-theme .ks-btn.ghost { background: #fff; color: #374151; border: 1px solid var(--border); }
-        .ks-login-theme .ks-btn.ghost:hover { background: #f4f6fa; }
+        .ks-login-theme .ks-login-form label { text-align: left; }
+        .ks-login-theme .ks-btn { border-radius: 12px; }
+        .ks-login-theme .ks-btn:not(.ghost) {
+          background: #fff; border: 1px solid var(--border); color: #111827; font-weight: 500;
+        }
+        .ks-login-theme .ks-btn:not(.ghost):hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .ks-login-theme .ks-btn.ghost { background: #fff; color: #111827; border: 1px solid var(--border); font-weight: 500; }
+        .ks-login-theme .ks-btn.ghost:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .ks-login-theme .ks-login-form-actions { gap: 12px; }
+        .ks-login-theme .ks-login-form-actions .ks-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .ks-login-theme .ks-pw-toggle { color: var(--muted); }
-        .ks-login-theme .ks-form-error { color: var(--negative); }
+        .ks-login-theme .ks-form-error {
+          color: var(--negative); font-size: 12px; text-align: left; margin-top: 8px;
+          display: flex; align-items: center; gap: 5px;
+        }
       `}</style>
 
       {!role ? (
         <div className="ks-login-wrap">
           <div className="ks-login-card">
-            <div className="ks-login-logo">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 2h6" />
-                <path d="M10 2v6.34a2 2 0 0 1-.4 1.2L5.2 15.8A3 3 0 0 0 7.6 21h8.8a3 3 0 0 0 2.4-5.2l-4.4-6.26a2 2 0 0 1-.4-1.2V2" />
-                <path d="M6.5 15h11" />
-              </svg>
-            </div>
-            <div className="ks-login-title">Stock Card — Paraformaldehyde</div>
-            <div className="ks-login-sub">Masuk untuk melanjutkan</div>
+            <img src="/logo-dover-chemical.png" alt="PT. Dover Chemical" className="ks-login-logo-img" />
+            <div className="ks-login-company">PT. Dover Chemical</div>
+            <div className="ks-login-title">Stock Card</div>
+            <div className="ks-login-system-name">Paraformaldehyde Inventory System</div>
+            <div className="ks-login-sub">Sign In To Continue</div>
 
             {loginStep === "choose" && (
               <div className="ks-login-choices">
                 <button className="ks-login-choice" onClick={() => { setLoginStep("password"); setLoginError(""); }}>
-                  <div className="ks-login-choice-title">Staff / Kepala Bagian</div>
-                  <div className="ks-login-choice-sub">Bisa tambah &amp; hapus transaksi</div>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                    <path d="M15 5 19 9" />
+                  </svg>
+                  <span className="ks-login-choice-title">Sign in as Editor</span>
                 </button>
                 <button className="ks-login-choice" onClick={loginAsViewer}>
-                  <div className="ks-login-choice-title">Manager / Lainnya</div>
-                  <div className="ks-login-choice-sub">Hanya bisa lihat &amp; export</div>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-7.5 11-7.5S23 12 23 12s-4 7.5-11 7.5S1 12 1 12Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  <span className="ks-login-choice-title">Sign in as Viewer</span>
                 </button>
               </div>
             )}
 
             {loginStep === "password" && (
               <div className="ks-login-form">
-                <label>Username</label>
                 <input
                   type="text"
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleEditorLogin(e); }}
-                  placeholder="Username kamu"
+                  placeholder="Username"
                   autoFocus
+                  style={{ marginTop: 0 }}
                 />
-                <label>Password</label>
-                <div className="ks-pw-wrap">
+                <div className="ks-pw-wrap" style={{ marginTop: 10 }}>
                   <input
                     type={showPw ? "text" : "password"}
                     value={pwInput}
                     onChange={(e) => setPwInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") handleEditorLogin(e); }}
-                    placeholder="Masukkan password"
+                    placeholder="Password"
                   />
                   <button type="button" className="ks-pw-toggle" onClick={() => setShowPw((v) => !v)} tabIndex={-1}>
                     {showPw ? (
@@ -1059,10 +1097,25 @@ export default function KartuStokPFA() {
                     )}
                   </button>
                 </div>
-                {loginError && <div className="ks-form-error">⚠ {loginError}</div>}
+                {loginError && (
+                  <div className="ks-form-error">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+                      <line x1="12" y1="9" x2="12" y2="13" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    {loginError}
+                  </div>
+                )}
                 <div className="ks-login-form-actions">
                   <button type="button" className="ks-btn ghost" onClick={() => { setLoginStep("choose"); setLoginError(""); setUserInput(""); setPwInput(""); }}>Kembali</button>
-                  <button type="button" className="ks-btn" onClick={handleEditorLogin}>Masuk</button>
+                  <button type="button" className="ks-btn" onClick={handleEditorLogin}>
+                    Masuk
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12h14" />
+                      <path d="m13 6 6 6-6 6" />
+                    </svg>
+                  </button>
                 </div>
               </div>
             )}
