@@ -50,8 +50,6 @@ function monthLabel(key) {
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
-// Prefix Lot No otomatis dari tanggal: 2 digit tahun + huruf bulan (A=Jan ... L=Des) + 2 digit tanggal
-// Contoh: 2023-12-22 -> "23L22"
 function getLotPrefix(dateStr) {
   if (!dateStr) return "";
   const [y, m, d] = dateStr.split("-");
@@ -59,7 +57,7 @@ function getLotPrefix(dateStr) {
   const yy = y.slice(-2);
   const monthNum = parseInt(m, 10);
   if (!monthNum || monthNum < 1 || monthNum > 12) return "";
-  const monthLetter = String.fromCharCode(64 + monthNum); // 1->A, 2->B ... 12->L
+  const monthLetter = String.fromCharCode(64 + monthNum);
   return `${yy}${monthLetter}${d}`;
 }
 function numFmt(n) {
@@ -78,7 +76,6 @@ function getPackagingUnit(name) {
   if (m) return `ZAK ${m[1]}`;
   return "Zak";
 }
-// Produk yang beratnya nggak tercantum eksplisit di nama, tapi berat per satuannya sudah diketahui
 const KNOWN_UNIT_WEIGHTS = {
   "PFA 86%": 25,
   "PFA 88%": 25,
@@ -98,10 +95,8 @@ function getUnitWeight(name) {
   return null;
 }
 
-// Nomor referensi data contoh dari awal pengembangan prototype — otomatis dibersihkan kalau masih ketemu
 const LEGACY_DEMO_REFS = ["EXT25-00207", "PA25-08160"];
 
-// ---------- Helper untuk fitur Resume Bulanan (semua produk sekaligus) ----------
 function lastDayOfMonthStr(year, monthIndex) {
   const days = new Date(year, monthIndex + 1, 0).getDate();
   return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(days).padStart(2, "0")}`;
@@ -148,15 +143,14 @@ function buildSheetRows(productName, balancedTxns, unit) {
   return rows;
 }
 
-// Ganti username/password di bawah ini dengan yang rahasia, hanya dikasih tau ke staff & kepala bagian yang bersangkutan
 const ACCOUNTS = [
   { username: "margaretta", password: "staff2026", name: "Margaretta (Staff Gudang)" },
   { username: "kepalabagian", password: "kabag2026", name: "Kepala Bagian" },
 ];
 
 export default function KartuStokPFA() {
-  const [role, setRole] = useState(null); // null | 'editor' | 'viewer'
-  const [loginStep, setLoginStep] = useState("choose"); // 'choose' | 'password'
+  const [role, setRole] = useState(null);
+  const [loginStep, setLoginStep] = useState("choose");
   const [userInput, setUserInput] = useState("");
   const [pwInput, setPwInput] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -188,15 +182,15 @@ export default function KartuStokPFA() {
   const [toast, setToast] = useState(null);
   const [formError, setFormError] = useState("");
   const [monthlyOpen, setMonthlyOpen] = useState(false);
-  const [filterMode, setFilterMode] = useState("all"); // 'all' | 'day' | 'month' | 'year' | 'range'
+  const [filterMode, setFilterMode] = useState("all");
   const [filterValue, setFilterValue] = useState("");
   const [rangeFrom, setRangeFrom] = useState("");
   const [rangeTo, setRangeTo] = useState("");
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [exportScope, setExportScope] = useState("current"); // 'current' | 'all'
+  const [exportScope, setExportScope] = useState("current");
   const now = new Date();
   const [viewYear, setViewYear] = useState(now.getFullYear());
-  const [viewMonth, setViewMonth] = useState(now.getMonth()); // 0-indexed
+  const [viewMonth, setViewMonth] = useState(now.getMonth());
   const [resumeOpen, setResumeOpen] = useState(false);
   const [resumeLoading, setResumeLoading] = useState(false);
   const [resumeExporting, setResumeExporting] = useState(false);
@@ -291,7 +285,6 @@ export default function KartuStokPFA() {
     try {
       const res = await getItem(`txns:${productId}`);
       let parsed = res ? JSON.parse(res.value) : [];
-      // Bersihkan otomatis data contoh dari awal pengembangan prototype (bukan data asli dari staff)
       if (LEGACY_DEMO_REFS.length) {
         const isLegacyDemo = parsed.length > 0 && parsed.every((t) => LEGACY_DEMO_REFS.includes(t.ref));
         if (isLegacyDemo) {
@@ -331,28 +324,38 @@ export default function KartuStokPFA() {
     }
   }, [showToast]);
 
+  // ============================================================
+  // OPTIMASI: ambil data semua produk SEKALIGUS (paralel) pakai
+  // Promise.all, bukan satu-satu bergantian (for...await berurutan).
+  // Ini yang bikin export "Semua Produk" & "Resume Bulanan" jadi
+  // jauh lebih cepat, terutama kalau jenis produknya banyak.
+  // ============================================================
   const loadResumeData = useCallback(async (year, monthIndex) => {
     setResumeLoading(true);
     try {
       const monthKeyStr = `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
       const endOfMonth = lastDayOfMonthStr(year, monthIndex);
-      const rows = [];
-      const fetched = {};
-      for (const p of PRODUCTS) {
-        let txns = txnsByProduct[p.id];
-        if (!txns) {
+
+      const needFetch = PRODUCTS.filter((p) => !txnsByProduct[p.id]);
+      const fetchResults = await Promise.all(
+        needFetch.map(async (p) => {
           try {
             const res = await getItem(`txns:${p.id}`);
             let parsed = res ? JSON.parse(res.value) : [];
             if (LEGACY_DEMO_REFS.length && parsed.length > 0 && parsed.every((t) => LEGACY_DEMO_REFS.includes(t.ref))) {
               parsed = [];
             }
-            txns = parsed;
+            return [p.id, parsed];
           } catch (e) {
-            txns = [];
+            return [p.id, []];
           }
-          fetched[p.id] = txns;
-        }
+        })
+      );
+      const fetched = Object.fromEntries(fetchResults);
+
+      const rows = [];
+      for (const p of PRODUCTS) {
+        const txns = txnsByProduct[p.id] || fetched[p.id] || [];
         const balanced = computeBalance(txns);
         let inZak = 0, inKg = 0, outZak = 0, outKg = 0;
         for (const t of balanced) {
@@ -419,7 +422,6 @@ export default function KartuStokPFA() {
   async function handleResumeExport() {
     setResumeExporting(true);
     try {
-      // rows[0] = [judul], rows[1] = baris kosong, rows[2] = header, rows[3+] = data
       const rows = buildResumeSheetRows(resumeMonthLabel, resumeRows);
       await exportExcelResume(
         rows.slice(2),
@@ -528,19 +530,29 @@ export default function KartuStokPFA() {
 
     setExporting(true);
     try {
+      // Ambil dulu produk mana aja yang datanya belum ada di cache,
+      // lalu fetch SEKALIGUS secara paralel (bukan satu-satu bergantian).
+      const needFetch = PRODUCTS.filter((p) => !txnsByProduct[p.id]);
+      const fetchResults = await Promise.all(
+        needFetch.map(async (p) => {
+          try {
+            const res = await getItem(`txns:${p.id}`);
+            return [p.id, res ? JSON.parse(res.value) : []];
+          } catch (e) {
+            return [p.id, []];
+          }
+        })
+      );
+      const fetched = Object.fromEntries(fetchResults);
+      if (Object.keys(fetched).length > 0) {
+        setTxnsByProduct((prev) => ({ ...prev, ...fetched }));
+      }
+
       const sheetsData = [];
       const usedNames = new Set();
       let anyData = false;
       for (const p of PRODUCTS) {
-        let txns = txnsByProduct[p.id];
-        if (!txns) {
-          try {
-            const res = await getItem(`txns:${p.id}`);
-            txns = res ? JSON.parse(res.value) : [];
-          } catch (e) {
-            txns = [];
-          }
-        }
+        let txns = txnsByProduct[p.id] || fetched[p.id] || [];
         if (txns.length > 0 && txns.every((t) => LEGACY_DEMO_REFS.includes(t.ref))) txns = [];
         const balanced = computeBalance(txns).filter(matchesFilter);
         if (balanced.length) anyData = true;
@@ -567,7 +579,7 @@ export default function KartuStokPFA() {
     } finally {
       setExporting(false);
     }
-  }, [exportScope, displayedTxns, periodLabel, selectedProduct, unit, filenameSlug, txnsByProduct, matchesFilter, showToast]);
+  }, [exportScope, displayedTxns, periodLabel, selectedProduct, unit, filenameSlug, txnsByProduct, matchesFilter, showToast, PRODUCTS]);
 
   const monthlyRecap = useMemo(() => {
     const map = new Map();
