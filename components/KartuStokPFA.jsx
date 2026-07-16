@@ -6,13 +6,13 @@ import { getItem, setItem, deleteItem } from "./appStorage";
 
 // ---------- Data produk (diambil dari STOCK_CARD_PFA_DES_2025.xlsx) ----------
 const RAW_PRODUCTS = [
-  "PFA 86%", "PFA 88%",
+  "PFA 86% ZAK25", "PFA 88% ZAK25",
   "PFA 92% ZAK25", "PFA 92% ZAK25 KITE", "PFA 92% JB500", "PFA 92% JB500 KITE",
   "PFA 92% JB300", "PFA 92% JB300 KITE", "PFA 92% JB1000", "PFA 92% JB1000 KITE",
   "PFA 96% ZAK25", "PFA 96% ZAK25 KITE", "PFA 96% JB450", "PFA 96% JB450 KITE",
   "PFA 96% JB500", "PFA 96% JB500 KITE", "PFA 96% JB1000", "PFA 96% JB1000 KITE",
   "PFA 97% ZAK20 KITE", "PFA 97% ZAK500 KITE",
-  "PFA Others @20", "PFA Others @25", "PFA Transisi", "PFA Others @jb500",
+  "PFA Others @20KG", "PFA Others @25KG", "PFA Transisi @25KG", "PFA Others @JB500",
 ];
 
 function categorize(name) {
@@ -27,9 +27,19 @@ function slugify(name) {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 const CATEGORY_ORDER = ["86%", "88%", "92%", "96%", "97%", "Lainnya"];
+// Menjaga id produk tetap sama seperti sebelumnya walau nama tampilannya berubah,
+// supaya data transaksi yang sudah tersimpan (dikunci ke id lama) tidak hilang/terpisah.
+const ID_OVERRIDES = {
+  "PFA 86% ZAK25": "pfa-86",
+  "PFA 88% ZAK25": "pfa-88",
+  "PFA Others @20KG": "pfa-others-20",
+  "PFA Others @25KG": "pfa-others-25",
+  "PFA Transisi @25KG": "pfa-transisi",
+  "PFA Others @JB500": "pfa-others-jb500",
+};
 function buildProduct(name) {
   const trimmed = name.trim();
-  return { id: slugify(trimmed), name: trimmed, category: categorize(trimmed) };
+  return { id: ID_OVERRIDES[trimmed] || slugify(trimmed), name: trimmed, category: categorize(trimmed) };
 }
 const BASE_PRODUCTS = RAW_PRODUCTS.map(buildProduct);
 
@@ -79,11 +89,7 @@ function getPackagingUnit(name) {
   return "Zak";
 }
 // Produk yang beratnya nggak tercantum eksplisit di nama, tapi berat per satuannya sudah diketahui
-const KNOWN_UNIT_WEIGHTS = {
-  "PFA 86%": 25,
-  "PFA 88%": 25,
-  "PFA Transisi": 25,
-};
+const KNOWN_UNIT_WEIGHTS = {};
 
 function getUnitWeight(name) {
   const trimmed = name.trim();
@@ -114,7 +120,22 @@ function buildResumeSheetRows(monthLabelText, rows) {
   for (const r of rows) {
     out.push([r.name, r.category, r.unit, r.inZak, r.inKg, r.outZak, r.outKg, r.sisaZak, r.sisaKg]);
   }
-  if (rows.length === 0) out.push(["(Tidak ada produk)"]);
+  if (rows.length === 0) {
+    out.push(["(Tidak ada produk)"]);
+  } else {
+    const t = rows.reduce(
+      (acc, r) => ({
+        inZak: acc.inZak + (Number(r.inZak) || 0),
+        inKg: acc.inKg + (Number(r.inKg) || 0),
+        outZak: acc.outZak + (Number(r.outZak) || 0),
+        outKg: acc.outKg + (Number(r.outKg) || 0),
+        sisaZak: acc.sisaZak + (Number(r.sisaZak) || 0),
+        sisaKg: acc.sisaKg + (Number(r.sisaKg) || 0),
+      }),
+      { inZak: 0, inKg: 0, outZak: 0, outKg: 0, sisaZak: 0, sisaKg: 0 }
+    );
+    out.push(["TOTAL", "", "", t.inZak, t.inKg, t.outZak, t.outKg, t.sisaZak, t.sisaKg]);
+  }
   return out;
 }
 
@@ -421,6 +442,19 @@ export default function KartuStokPFA() {
     return years.sort((a, b) => b - a);
   }, [resumeYear]);
   const resumeMonthLabel = `${MONTHS_ID[resumeMonth]} ${resumeYear}`;
+  const resumeTotals = useMemo(() => {
+    return resumeRows.reduce(
+      (acc, r) => ({
+        inZak: acc.inZak + (Number(r.inZak) || 0),
+        inKg: acc.inKg + (Number(r.inKg) || 0),
+        outZak: acc.outZak + (Number(r.outZak) || 0),
+        outKg: acc.outKg + (Number(r.outKg) || 0),
+        sisaZak: acc.sisaZak + (Number(r.sisaZak) || 0),
+        sisaKg: acc.sisaKg + (Number(r.sisaKg) || 0),
+      }),
+      { inZak: 0, inKg: 0, outZak: 0, outKg: 0, sisaZak: 0, sisaKg: 0 }
+    );
+  }, [resumeRows]);
 
   async function handleResumeExport() {
     setResumeExporting(true);
@@ -678,7 +712,7 @@ export default function KartuStokPFA() {
         return;
       }
       if (zakNum <= 0 && kgNum <= 0) {
-        setFormError(`Isi jumlah (${unit}) atau berat (Kg) — minimal salah satu harus lebih dari 0.`);
+        setFormError(`Jumlah wajib diisi dengan nilai lebih dari 0.`);
         return;
       }
       setFormError("");
@@ -943,6 +977,10 @@ export default function KartuStokPFA() {
         .ks-resume-month { font-family: 'Oswald', sans-serif; font-size: 14px; letter-spacing: 0.02em;
           text-transform: uppercase; min-width: 140px; text-align: center; }
         .ks-resume-table-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: auto; max-height: 55vh; }
+        .ks-resume-total-row td {
+          background: var(--panel-alt); font-weight: 700; border-top: 2px solid var(--border);
+          position: sticky; bottom: 0; padding: 12px 10px; vertical-align: top;
+        }
         .ks-resume-select {
           background: var(--panel-alt); color: var(--text); border: 1px solid var(--border);
           border-radius: 6px; padding: 7px 10px; font-size: 13px; font-family: 'Inter', sans-serif; cursor: pointer;
@@ -1172,6 +1210,18 @@ export default function KartuStokPFA() {
               </>
             ) : (
               grouped.map((g) => {
+                if (g.items.length === 1) {
+                  const p = g.items[0];
+                  return (
+                    <button
+                      key={p.id}
+                      className={`ks-item ks-item-single ${p.id === selectedId ? "active" : ""}`}
+                      onClick={() => selectProduct(p)}
+                    >
+                      {p.name}
+                    </button>
+                  );
+                }
                 const isOpen = expandedCats.has(g.cat);
                 return (
                   <div key={g.cat}>
@@ -1331,9 +1381,9 @@ export default function KartuStokPFA() {
                       <tr key={t.id}>
                         <td className="ks-mono">{fmtDate(t.date)}</td>
                         <td className="ks-mono">{t.ref || "-"}</td>
-                        <td className="ks-mono ks-in">{t.type === "in" ? `${numFmt(t.zak)} ${unit} / ${numFmt(t.kg)} kg` : "-"}</td>
-                        <td className="ks-mono ks-out">{t.type === "out" ? `${numFmt(t.zak)} ${unit} / ${numFmt(t.kg)} kg` : "-"}</td>
-                        <td><span className="ks-sisa-badge">{numFmt(t.sisaZak)} {unit}</span></td>
+                        <td className="ks-mono ks-in">{t.type === "in" ? `${numFmt(t.zak)} / ${numFmt(t.kg)} kg` : "-"}</td>
+                        <td className="ks-mono ks-out">{t.type === "out" ? `${numFmt(t.zak)} / ${numFmt(t.kg)} kg` : "-"}</td>
+                        <td><span className="ks-sisa-badge">{numFmt(t.sisaZak)}</span></td>
                         <td className="ks-mono">{numFmt(t.sisaKg)} kg</td>
                         <td>{t.lokasi || "-"}</td>
                         <td className="ks-mono">{t.lot || "-"}</td>
@@ -1375,9 +1425,9 @@ export default function KartuStokPFA() {
                       <div className="ks-monthly-row-full" key={key}>
                         <div className="ks-monthly-month">{monthLabel(key)}</div>
                         <div className="ks-monthly-grid">
-                          <div><span className="ks-monthly-label">IN</span><span className="ks-mono ks-in">{numFmt(v.inZak)} {unit} / {numFmt(v.inKg)} kg</span></div>
-                          <div><span className="ks-monthly-label">OUT</span><span className="ks-mono ks-out">{numFmt(v.outZak)} {unit} / {numFmt(v.outKg)} kg</span></div>
-                          <div><span className="ks-monthly-label">SISA</span><span className="ks-mono">{numFmt(v.sisaZak)} {unit}</span></div>
+                          <div><span className="ks-monthly-label">IN</span><span className="ks-mono ks-in">{numFmt(v.inZak)} / {numFmt(v.inKg)} kg</span></div>
+                          <div><span className="ks-monthly-label">OUT</span><span className="ks-mono ks-out">{numFmt(v.outZak)} / {numFmt(v.outKg)} kg</span></div>
+                          <div><span className="ks-monthly-label">SISA</span><span className="ks-mono">{numFmt(v.sisaZak)}</span></div>
                           <div><span className="ks-monthly-label">TOTAL</span><span className="ks-mono">{numFmt(v.sisaKg)} kg</span></div>
                         </div>
                       </div>
@@ -1429,7 +1479,7 @@ export default function KartuStokPFA() {
               </div>
               <div className="ks-row2">
                 <div className="ks-field">
-                  <label>Jumlah ({unit})</label>
+                  <label>Jumlah</label>
                   <input
                     type="number"
                     value={form.zak}
@@ -1446,7 +1496,6 @@ export default function KartuStokPFA() {
                   {unitWeight != null ? (
                     <div className="ks-kg-display">
                       <span className="ks-kg-value">{numFmt((Number(form.zak) || 0) * unitWeight)} kg</span>
-                      <span className="ks-hint">{numFmt(Number(form.zak) || 0)} × {unitWeight} kg</span>
                     </div>
                   ) : (
                     <>
@@ -1566,13 +1615,24 @@ export default function KartuStokPFA() {
                       {resumeRows.map((r) => (
                         <tr key={r.id}>
                           <td>{r.name}</td>
-                          <td className="ks-mono ks-in">{numFmt(r.inZak)} {r.unit} / {numFmt(r.inKg)} kg</td>
-                          <td className="ks-mono ks-out">{numFmt(r.outZak)} {r.unit} / {numFmt(r.outKg)} kg</td>
-                          <td><span className="ks-sisa-badge">{numFmt(r.sisaZak)} {r.unit}</span></td>
+                          <td className="ks-mono ks-in">{numFmt(r.inZak)} / {numFmt(r.inKg)} kg</td>
+                          <td className="ks-mono ks-out">{numFmt(r.outZak)} / {numFmt(r.outKg)} kg</td>
+                          <td><span className="ks-sisa-badge">{numFmt(r.sisaZak)}</span></td>
                           <td className="ks-mono">{numFmt(r.sisaKg)} kg</td>
                         </tr>
                       ))}
                     </tbody>
+                    {resumeRows.length > 0 && (
+                      <tfoot>
+                        <tr className="ks-resume-total-row">
+                          <td>TOTAL</td>
+                          <td className="ks-mono ks-in">{numFmt(resumeTotals.inZak)} / {numFmt(resumeTotals.inKg)} kg</td>
+                          <td className="ks-mono ks-out">{numFmt(resumeTotals.outZak)} / {numFmt(resumeTotals.outKg)} kg</td>
+                          <td><span className="ks-sisa-badge">{numFmt(resumeTotals.sisaZak)}</span></td>
+                          <td className="ks-mono">{numFmt(resumeTotals.sisaKg)} kg</td>
+                        </tr>
+                      </tfoot>
+                    )}
                   </table>
                 </div>
                 <div className="ks-modal-actions">
