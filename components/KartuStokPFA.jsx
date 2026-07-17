@@ -224,6 +224,7 @@ export default function KartuStokPFA() {
   const [resumeYear, setResumeYear] = useState(now.getFullYear());
   const [resumeMonth, setResumeMonth] = useState(now.getMonth());
   const [resumeRows, setResumeRows] = useState([]);
+  const [hasSelectedProduct, setHasSelectedProduct] = useState(false);
 
   const selectedProduct = PRODUCTS.find((p) => p.id === selectedId);
   const [expandedCats, setExpandedCats] = useState(() => new Set([selectedProduct.category]));
@@ -240,6 +241,7 @@ export default function KartuStokPFA() {
     setSelectedId(p.id);
     setExpandedCats((prev) => new Set(prev).add(p.category));
     setConfirmDeleteProduct(false);
+    setHasSelectedProduct(true);
   }
 
   function openAddProductForm() {
@@ -700,6 +702,7 @@ export default function KartuStokPFA() {
     setPwInput("");
     setLoginError("");
     setLoggedInName("");
+    setHasSelectedProduct(false);
   }
 
   async function submitForm(e) {
@@ -821,6 +824,16 @@ export default function KartuStokPFA() {
         .ks-item:hover { background: var(--panel-alt); }
         .ks-item.active { background: var(--accent-dim); border-left-color: var(--accent); font-weight: 600; }
         .ks-main { flex: 1; padding: 20px 24px; overflow-y: auto; min-width: 0; }
+        .ks-welcome {
+          height: 100%; min-height: 340px; display: flex; flex-direction: column; align-items: center;
+          justify-content: center; text-align: center; color: var(--muted); gap: 6px;
+        }
+        .ks-welcome-icon {
+          width: 62px; height: 62px; border-radius: 16px; display: flex; align-items: center; justify-content: center;
+          background: var(--accent-dim); color: var(--accent); margin-bottom: 10px;
+        }
+        .ks-welcome-title { font-family: 'Oswald', sans-serif; font-size: 19px; font-weight: 600; color: var(--text); letter-spacing: 0.01em; }
+        .ks-welcome-sub { font-size: 13.5px; max-width: 320px; }
         .ks-headrow { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
         .ks-product-name { font-family: 'Oswald', sans-serif; font-size: 24px; font-weight: 600; letter-spacing: 0.01em; }
         .ks-btn {
@@ -1059,9 +1072,9 @@ export default function KartuStokPFA() {
         .ks-login-theme .ks-login-form label { text-align: left; }
         .ks-login-theme .ks-btn { border-radius: 12px; }
         .ks-login-theme .ks-btn:not(.ghost) {
-          background: #fff; border: 1px solid var(--border); color: #111827; font-weight: 500;
+          background: var(--accent); border: 1px solid var(--accent); color: #ffffff; font-weight: 500;
         }
-        .ks-login-theme .ks-btn:not(.ghost):hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .ks-login-theme .ks-btn:not(.ghost):hover { filter: brightness(1.1); }
         .ks-login-theme .ks-btn.ghost { background: #fff; color: #111827; border: 1px solid var(--border); font-weight: 500; }
         .ks-login-theme .ks-btn.ghost:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
         .ks-login-theme .ks-login-form-actions { gap: 12px; }
@@ -1201,7 +1214,7 @@ export default function KartuStokPFA() {
                 {filteredProducts.map((p) => (
                   <button
                     key={p.id}
-                    className={`ks-item ${p.id === selectedId ? "active" : ""}`}
+                    className={`ks-item ${p.id === selectedId && hasSelectedProduct ? "active" : ""}`}
                     onClick={() => { selectProduct(p); setSearch(""); }}
                   >
                     {p.name}
@@ -1215,7 +1228,7 @@ export default function KartuStokPFA() {
                   return (
                     <button
                       key={p.id}
-                      className={`ks-item ks-item-single ${p.id === selectedId ? "active" : ""}`}
+                      className={`ks-item ks-item-single ${p.id === selectedId && hasSelectedProduct ? "active" : ""}`}
                       onClick={() => selectProduct(p)}
                     >
                       {p.name}
@@ -1232,7 +1245,7 @@ export default function KartuStokPFA() {
                     {isOpen && g.items.map((p) => (
                       <button
                         key={p.id}
-                        className={`ks-item ${p.id === selectedId ? "active" : ""}`}
+                        className={`ks-item ${p.id === selectedId && hasSelectedProduct ? "active" : ""}`}
                         onClick={() => selectProduct(p)}
                       >
                         {p.name}
@@ -1246,6 +1259,20 @@ export default function KartuStokPFA() {
         </div>
 
         <div className="ks-main">
+          {!hasSelectedProduct ? (
+            <div className="ks-welcome">
+              <div className="ks-welcome-icon">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 2h6" />
+                  <path d="M10 2v6.34a2 2 0 0 1-.4 1.2L5.2 15.8A3 3 0 0 0 7.6 21h8.8a3 3 0 0 0 2.4-5.2l-4.4-6.26a2 2 0 0 1-.4-1.2V2" />
+                  <path d="M6.5 15h11" />
+                </svg>
+              </div>
+              <div className="ks-welcome-title">Pilih Jenis Produk</div>
+              <div className="ks-welcome-sub">Klik salah satu jenis produk di sidebar kiri untuk melihat kartu stoknya.</div>
+            </div>
+          ) : (
+          <>
           <div className="ks-headrow">
             <div>
               <div className="ks-product-name">{selectedProduct.name}</div>
@@ -1436,6 +1463,8 @@ export default function KartuStokPFA() {
                 )}
               </div>
             </>
+          )}
+          </>
           )}
         </div>
       </div>
