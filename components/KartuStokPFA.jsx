@@ -16,17 +16,15 @@ const RAW_PRODUCTS = [
 ];
 
 function categorize(name) {
-  if (/86%/.test(name)) return "86%";
-  if (/88%/.test(name)) return "88%";
-  if (/92%/.test(name)) return "92%";
-  if (/96%/.test(name)) return "96%";
-  if (/97%/.test(name)) return "97%";
+  const m = name.match(/(\d{1,3})%/);
+  if (m) return `${m[1]}%`;
   return "Lainnya";
 }
 function slugify(name) {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
-const CATEGORY_ORDER = ["86%", "88%", "92%", "96%", "97%", "Lainnya"];
+// Urutan kategori dihitung otomatis di dalam komponen (lihat variabel productCategories),
+// supaya kalau ada persentase baru (misal 99%) otomatis kesortir sesuai angka, bukan hardcode.
 // Menjaga id produk tetap sama seperti sebelumnya walau nama tampilannya berubah,
 // supaya data transaksi yang sudah tersimpan (dikunci ke id lama) tidak hilang/terpisah.
 const ID_OVERRIDES = {
@@ -643,7 +641,12 @@ export default function KartuStokPFA() {
   const filteredProducts = PRODUCTS.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
-  const grouped = CATEGORY_ORDER.map((cat) => ({
+  const productCategories = Array.from(new Set(PRODUCTS.map((p) => p.category))).sort((a, b) => {
+    if (a === "Lainnya") return 1;
+    if (b === "Lainnya") return -1;
+    return parseInt(a, 10) - parseInt(b, 10);
+  });
+  const grouped = productCategories.map((cat) => ({
     cat,
     items: filteredProducts.filter((p) => p.category === cat),
   })).filter((g) => g.items.length);
@@ -797,19 +800,23 @@ export default function KartuStokPFA() {
         .ks-sidebar { width: 250px; border-right: 1px solid var(--border); background: var(--panel);
           display: flex; flex-direction: column; }
         .ks-search { padding: 12px; border-bottom: 1px solid var(--border); }
-        .ks-search-box { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-        .ks-search-box input {
-          flex: 1; min-width: 0; background: var(--panel-alt); border: none; color: var(--text);
-          padding: 8px 10px; font-size: 13px; font-family: 'Inter', sans-serif;
+        .ks-search-box {
+          display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--accent);
+          border-radius: 999px; padding: 0 12px; background: var(--panel-alt);
         }
-        .ks-search-box input:focus { outline: none; background: var(--panel); }
+        .ks-search-icon { display: flex; align-items: center; color: var(--accent); flex-shrink: 0; }
+        .ks-search-box input {
+          flex: 1; min-width: 0; background: transparent; border: none; color: var(--text);
+          padding: 9px 0; font-size: 14px; font-family: 'Inter', sans-serif;
+        }
+        .ks-search-box input:focus { outline: none; }
         .ks-add-product-wrap { padding: 0 12px 10px; border-bottom: 1px solid var(--border); }
         .ks-add-product-btn { width: 100%; font-size: 12.5px; padding: 7px; }
-        .ks-search-btn {
-          background: var(--accent); color: #17140d; border: none; padding: 0 14px; cursor: pointer;
-          font-size: 14px; display: flex; align-items: center; justify-content: center;
+        .ks-search-clear {
+          background: transparent; color: var(--muted); border: none; padding: 4px; cursor: pointer;
+          font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
-        .ks-search-btn:hover { filter: brightness(1.08); }
+        .ks-search-clear:hover { color: var(--text); }
         .ks-list { overflow-y: auto; flex: 1; padding: 6px 0; }
         .ks-cat-label { width: 100%; display: flex; align-items: center; justify-content: space-between;
           background: transparent; border: none; cursor: pointer; padding: 10px 16px 8px; font-size: 11px;
@@ -1077,6 +1084,7 @@ export default function KartuStokPFA() {
         .ks-login-theme .ks-btn:not(.ghost):hover { filter: brightness(1.1); }
         .ks-login-theme .ks-btn.ghost { background: #fff; color: #111827; border: 1px solid var(--border); font-weight: 500; }
         .ks-login-theme .ks-btn.ghost:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .ks-login-theme .ks-btn.ks-add-product-btn { border-radius: 6px; }
         .ks-login-theme .ks-login-form-actions { gap: 12px; }
         .ks-login-theme .ks-login-form-actions .ks-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .ks-login-theme .ks-pw-toggle { color: var(--muted); }
@@ -1189,15 +1197,23 @@ export default function KartuStokPFA() {
         <div className="ks-sidebar">
           <div className="ks-search">
             <div className="ks-search-box">
+              <span className="ks-search-icon">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+              </span>
               <input placeholder="Cari produk..." value={search} onChange={(e) => setSearch(e.target.value)} />
-              <button
-                type="button"
-                className="ks-search-btn"
-                onClick={() => search.trim() !== "" && setSearch("")}
-                title={search.trim() !== "" ? "Hapus pencarian" : "Cari"}
-              >
-                {search.trim() !== "" ? "✕" : "🔍"}
-              </button>
+              {search.trim() !== "" && (
+                <button
+                  type="button"
+                  className="ks-search-clear"
+                  onClick={() => setSearch("")}
+                  title="Hapus pencarian"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           </div>
           {role === "editor" && (
