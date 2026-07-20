@@ -119,7 +119,7 @@ function lastDayOfMonthStr(year, monthIndex) {
   return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(days).padStart(2, "0")}`;
 }
 function buildResumeSheetHeader() {
-  return ["Produk", "IN (Satuan)", "IN (Kg)", "OUT (Satuan)", "OUT (Kg)", "Sisa (Satuan)", "Total (Kg)"];
+  return ["Produk", "IN", "IN (Kg)", "OUT", "OUT (Kg)", "Sisa (Satuan)", "Total (Kg)"];
 }
 function buildResumeSheetRows(monthLabelText, rows) {
   const out = [[`Resume Bulanan - ${monthLabelText}`], [], buildResumeSheetHeader()];
@@ -158,7 +158,8 @@ function computeBalance(txns) {
 }
 
 function buildSheetHeader(unit) {
-  return ["Tanggal", "Referensi", `Masuk (${unit})`, "Masuk (Kg)", `Keluar (${unit})`, "Keluar (Kg)", `Sisa (${unit})`, "Total (Kg)", "Lokasi", "Lot No", "Pallet Kayu (Eksport)", "Pallet Kayu (Lokal)", "Keterangan"];
+  const unitBase = unit.replace(/\s*\d+$/, "").trim(); // "ZAK 25" -> "ZAK", "JB 1000" -> "JB"
+  return ["Tanggal", "Referensi", `IN (${unitBase})`, "Masuk (Kg)", `OUT (${unitBase})`, "Keluar (Kg)", `Sisa (${unitBase})`, "Total (Kg)", "Lokasi", "Lot No", "Pallet Kayu (Eksport)", "Pallet Kayu (Lokal)", "Keterangan"];
 }
 
 function buildSheetRows(productName, balancedTxns, unit) {

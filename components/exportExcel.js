@@ -138,6 +138,9 @@ function styleWorksheet(worksheet, rows, titleText, sheetName, options = {}) {
         };
 
         if (typeof cell.value === "number") {
+          // numFmt masih ikut regional Windows/Excel si user (bisa jadi titik lagi),
+          // jadi angkanya langsung diubah ke teks berformat koma yang fixed, tidak ikut regional.
+          cell.value = cell.value.toLocaleString("en-US");
           cell.alignment = {
             horizontal: "center",
             vertical: "middle",
