@@ -42,6 +42,14 @@ function buildProduct(name) {
 const BASE_PRODUCTS = RAW_PRODUCTS.map(buildProduct);
 
 const MONTHS_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+const MONTHS_ID_FULL = [
+  "JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI",
+  "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER",
+];
+function monthLabelFull(key) {
+  const [y, m] = key.split("-");
+  return `${MONTHS_ID_FULL[parseInt(m, 10) - 1]} ${y}`;
+}
 function fmtDate(iso) {
   if (!iso) return "-";
   const d = new Date(iso + "T00:00:00");
@@ -111,12 +119,12 @@ function lastDayOfMonthStr(year, monthIndex) {
   return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(days).padStart(2, "0")}`;
 }
 function buildResumeSheetHeader() {
-  return ["Produk", "Kategori", "Satuan", "Masuk (Satuan)", "Masuk (Kg)", "Keluar (Satuan)", "Keluar (Kg)", "Sisa (Satuan)", "Total (Kg)"];
+  return ["Produk", "IN (Satuan)", "IN (Kg)", "OUT (Satuan)", "OUT (Kg)", "Sisa (Satuan)", "Total (Kg)"];
 }
 function buildResumeSheetRows(monthLabelText, rows) {
   const out = [[`Resume Bulanan - ${monthLabelText}`], [], buildResumeSheetHeader()];
   for (const r of rows) {
-    out.push([r.name, r.category, r.unit, r.inZak, r.inKg, r.outZak, r.outKg, r.sisaZak, r.sisaKg]);
+    out.push([r.name, r.inZak, r.inKg, r.outZak, r.outKg, r.sisaZak, r.sisaKg]);
   }
   if (rows.length === 0) {
     out.push(["(Tidak ada produk)"]);
@@ -132,7 +140,7 @@ function buildResumeSheetRows(monthLabelText, rows) {
       }),
       { inZak: 0, inKg: 0, outZak: 0, outKg: 0, sisaZak: 0, sisaKg: 0 }
     );
-    out.push(["TOTAL", "", "", t.inZak, t.inKg, t.outZak, t.outKg, t.sisaZak, t.sisaKg]);
+    out.push(["TOTAL", t.inZak, t.inKg, t.outZak, t.outKg, t.sisaZak, t.sisaKg]);
   }
   return out;
 }
@@ -155,15 +163,51 @@ function buildSheetHeader(unit) {
 
 function buildSheetRows(productName, balancedTxns, unit) {
   const rows = [[productName], [], buildSheetHeader(unit)];
+
+  // Sisipkan baris "SUB TOTAL <BULAN> <TAHUN>" setiap kali bulan transaksi berganti,
+  // persis seperti kartu stok manual (lihat contoh) — baris ini akan diwarnai hijau di Excel.
+  let currentMonthKey = null;
+  let monthAgg = null;
+
+  function pushMonthSubtotal() {
+    if (!monthAgg) return;
+    rows.push([
+      `SUB TOTAL ${monthLabelFull(currentMonthKey)}`,
+      "",
+      monthAgg.inZak, monthAgg.inKg,
+      monthAgg.outZak, monthAgg.outKg,
+      monthAgg.lastSisaZak, monthAgg.lastSisaKg,
+      "", "", "", "", "",
+    ]);
+  }
+
   for (const t of balancedTxns) {
+    const mk = monthKey(t.date);
+    if (mk !== currentMonthKey) {
+      pushMonthSubtotal();
+      currentMonthKey = mk;
+      monthAgg = { inZak: 0, inKg: 0, outZak: 0, outKg: 0, lastSisaZak: 0, lastSisaKg: 0 };
+    }
+
     rows.push([
       fmtDate(t.date), t.ref || "", t.type === "in" ? t.zak : "", t.type === "in" ? t.kg : "",
       t.type === "out" ? t.zak : "", t.type === "out" ? t.kg : "", t.sisaZak, t.sisaKg,
       t.lokasi || "", t.lot || "", t.palletEkspor === "" || t.palletEkspor == null ? "" : t.palletEkspor,
       t.palletLokal === "" || t.palletLokal == null ? "" : t.palletLokal, t.ket || "",
     ]);
+
+    monthAgg.inZak += t.type === "in" ? Number(t.zak) || 0 : 0;
+    monthAgg.inKg += t.type === "in" ? Number(t.kg) || 0 : 0;
+    monthAgg.outZak += t.type === "out" ? Number(t.zak) || 0 : 0;
+    monthAgg.outKg += t.type === "out" ? Number(t.kg) || 0 : 0;
+    monthAgg.lastSisaZak = t.sisaZak;
+    monthAgg.lastSisaKg = t.sisaKg;
   }
-  if (balancedTxns.length === 0) rows.push(["(Belum ada transaksi)"]);
+  pushMonthSubtotal(); // subtotal untuk bulan terakhir
+
+  if (balancedTxns.length === 0) {
+    rows.push(["(Belum ada transaksi)"]);
+  }
   return rows;
 }
 

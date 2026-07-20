@@ -6,9 +6,9 @@ import { saveAs } from "file-saver";
 // Sisa(unit), Total(Kg), Lokasi, Lot No, Pallet Eksport, Pallet Lokal, Keterangan
 const KARTU_STOK_COLUMN_WIDTHS = [15, 20, 12, 12, 12, 12, 12, 12, 18, 18, 15, 15, 35];
 
-// Lebar kolom untuk Resume Bulanan (9 kolom):
-// Produk, Kategori, Satuan, Masuk(Satuan), Masuk(Kg), Keluar(Satuan), Keluar(Kg), Sisa(Satuan), Total(Kg)
-const RESUME_COLUMN_WIDTHS = [22, 16, 10, 14, 12, 14, 12, 12, 12];
+// Lebar kolom untuk Resume Bulanan (7 kolom):
+// Produk, Masuk(Satuan), Masuk(Kg), Keluar(Satuan), Keluar(Kg), Sisa(Satuan), Total(Kg)
+const RESUME_COLUMN_WIDTHS = [26, 14, 12, 14, 12, 12, 12];
 
 // =====================================================
 // FUNGSI BERSAMA: styling 1 worksheet
@@ -148,6 +148,48 @@ function styleWorksheet(worksheet, rows, titleText, sheetName, options = {}) {
           };
         }
       });
+    }
+  });
+
+  // =====================================================
+  // SUB TOTAL BULANAN & TOTAL AKHIR (styling khusus)
+  // =====================================================
+
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber < 5) return;
+
+    const firstCellValue = row.getCell(1).value;
+    const isMonthlySubtotal =
+      typeof firstCellValue === "string" && firstCellValue.startsWith("SUB TOTAL ");
+
+    if (isMonthlySubtotal) {
+      // Label "SUB TOTAL BULAN TAHUN" digabung di kolom A:B, seluruh baris diwarnai hijau
+      worksheet.mergeCells(`A${rowNumber}:B${rowNumber}`);
+
+      for (let col = 1; col <= totalColumns; col++) {
+        const cell = row.getCell(col);
+
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FF34A853" },
+        };
+
+        cell.font = {
+          bold: true,
+          color: { argb: "FFFFFFFF" },
+          name: "Times New Roman",
+        };
+
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+      }
+
+      row.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
     }
   });
 
