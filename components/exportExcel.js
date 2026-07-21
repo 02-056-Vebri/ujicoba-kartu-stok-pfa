@@ -7,7 +7,7 @@ import { saveAs } from "file-saver";
 const KARTU_STOK_COLUMN_WIDTHS = [15, 20, 12, 12, 12, 12, 12, 12, 18, 18, 15, 15, 35];
 
 // Lebar kolom untuk Resume Bulanan (7 kolom):
-// Produk, Masuk(Satuan), Masuk(Kg), Keluar(Satuan), Keluar(Kg), Sisa(Satuan), Total(Kg)
+// Produk, IN, IN(Kg), OUT, OUT(Kg), Sisa(Satuan), Total(Kg)
 const RESUME_COLUMN_WIDTHS = [26, 14, 12, 14, 12, 12, 12];
 
 // =====================================================
@@ -138,9 +138,10 @@ function styleWorksheet(worksheet, rows, titleText, sheetName, options = {}) {
         };
 
         if (typeof cell.value === "number") {
-          // numFmt masih ikut regional Windows/Excel si user (bisa jadi titik lagi),
-          // jadi angkanya langsung diubah ke teks berformat koma yang fixed, tidak ikut regional.
-          cell.value = cell.value.toLocaleString("en-US");
+          // Tetap disimpan sebagai angka asli (bukan teks) supaya tidak muncul warning
+          // "Number Stored as Text" (segitiga hijau) dan tetap bisa disortir/dihitung.
+          // Format ribuan mengikuti pengaturan regional Excel si pengguna.
+          cell.numFmt = "#,##0";
           cell.alignment = {
             horizontal: "center",
             vertical: "middle",

@@ -948,8 +948,8 @@ export default function KartuStokPFA() {
         .ks-cal-day.selected.has-data::after { background: #17140d; }
         .ks-cal-actions { display: flex; gap: 8px; margin-top: 10px; }
         .ks-btn.small { padding: 6px 10px; font-size: 12px; }
-        .ks-table-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-        table.ks-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .ks-table-wrap { border: 1px solid var(--border); border-radius: 8px; overflow-x: auto; }
+        table.ks-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 900px; }
         table.ks-table thead th {
           background: var(--panel-alt); text-align: left; padding: 9px 10px; font-size: 11px;
           text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); border-bottom: 1px solid var(--border);
@@ -975,10 +975,16 @@ export default function KartuStokPFA() {
         .ks-field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
         .ks-input-auto { opacity: 0.75; cursor: not-allowed; }
         .ks-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
-        .ks-kg-display { background: var(--panel-alt); border: 1px solid var(--border); border-radius: 6px;
-          padding: 8px 10px; }
-        .ks-kg-value { display: block; font-family: 'JetBrains Mono', monospace; font-size: 15px;
+        .ks-kg-display { display: flex; align-items: center; gap: 6px; background: var(--panel-alt);
+          border: 1px solid var(--border); border-radius: 6px; padding: 0 10px; }
+        .ks-kg-value { font-family: 'JetBrains Mono', monospace; font-size: 15px;
           color: var(--accent); font-weight: 600; }
+        .ks-kg-input { flex: 0 0 auto; background: transparent !important; border: none !important;
+          padding: 9px 0 !important; width: 9ch !important; color: var(--accent) !important;
+          font-family: 'JetBrains Mono', monospace !important; font-size: 15px !important; font-weight: 600 !important; }
+        .ks-kg-input:focus { outline: none; }
+        .ks-kg-suffix { font-family: 'JetBrains Mono', monospace; font-size: 15px; color: var(--accent);
+          font-weight: 600; flex-shrink: 0; }
         .ks-kg-display .ks-hint { margin-top: 2px; }
         .ks-field input, .ks-field select, .ks-field textarea {
           width: 100%; background: var(--panel-alt); border: 1px solid var(--border); color: var(--text);
@@ -1583,20 +1589,18 @@ export default function KartuStokPFA() {
                 </div>
                 <div className="ks-field">
                   <label>Berat Total (Kg)</label>
-                  {unitWeight != null ? (
-                    <div className="ks-kg-display">
-                      <span className="ks-kg-value">{numFmt((Number(form.zak) || 0) * unitWeight)} kg</span>
-                    </div>
-                  ) : (
-                    <>
-                      <input
-                        type="number"
-                        value={form.kg}
-                        onChange={(e) => setForm({ ...form, kg: e.target.value })}
-                        placeholder="0"
-                      />
-                      <div className="ks-hint">Isi manual (satuan produk ini tidak tercantum di nama)</div>
-                    </>
+                  <div className="ks-kg-display">
+                    <input
+                      type="number"
+                      className="ks-kg-value ks-kg-input"
+                      value={form.kg}
+                      onChange={(e) => setForm({ ...form, kg: e.target.value })}
+                      placeholder="0"
+                    />
+                    <span className="ks-kg-suffix">kg</span>
+                  </div>
+                  {unitWeight == null && (
+                    <div className="ks-hint">Isi manual (satuan produk ini tidak tercantum di nama)</div>
                   )}
                 </div>
               </div>
