@@ -733,7 +733,7 @@ export default function KartuStokPFA() {
       setUserInput("");
       setPwInput("");
     } else {
-      setLoginError("Username atau password salah. Coba lagi.");
+      setLoginError("Incorrect username or password. Try again.");
     }
   }
 
@@ -1143,6 +1143,7 @@ export default function KartuStokPFA() {
         .ks-login-theme .ks-form-error {
           color: var(--negative); font-size: 12px; text-align: left; margin-top: 8px;
           display: flex; align-items: center; gap: 5px;
+          background: none; border: none; padding: 0;
         }
       `}</style>
 
@@ -1219,9 +1220,9 @@ export default function KartuStokPFA() {
                   </div>
                 )}
                 <div className="ks-login-form-actions">
-                  <button type="button" className="ks-btn ghost" onClick={() => { setLoginStep("choose"); setLoginError(""); setUserInput(""); setPwInput(""); }}>Kembali</button>
+                  <button type="button" className="ks-btn ghost" onClick={() => { setLoginStep("choose"); setLoginError(""); setUserInput(""); setPwInput(""); }}>Back</button>
                   <button type="button" className="ks-btn" onClick={handleEditorLogin}>
-                    Masuk
+                    Login
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M5 12h14" />
                       <path d="m13 6 6 6-6 6" />
