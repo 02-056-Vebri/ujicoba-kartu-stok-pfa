@@ -214,8 +214,7 @@ function buildSheetRows(productName, balancedTxns, unit) {
 
 // Ganti username/password di bawah ini dengan yang rahasia, hanya dikasih tau ke staff & kepala bagian yang bersangkutan
 const ACCOUNTS = [
-  { username: "margaretta", password: "staff2026", name: "Margaretta (Staff Gudang)" },
-  { username: "kepalabagian", password: "kabag2026", name: "Kepala Bagian" },
+  { username: "pfa", password: "pfa1234", name: "Editor" },
 ];
 
 export default function KartuStokPFA() {
@@ -1091,6 +1090,8 @@ export default function KartuStokPFA() {
           height: auto;
           display: block;
           margin: 0 auto 8px;
+          background: #fff;
+          border-radius: 8px;
         }
         .ks-login-company {
           font-family: 'Inter', sans-serif;
