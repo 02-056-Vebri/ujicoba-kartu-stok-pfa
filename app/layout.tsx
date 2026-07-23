@@ -2,14 +2,14 @@ import "./globals.css";
 
 export const metadata = {
   title: "Kartu Stok PFA",
-  description: "Prototype Website",
+  description: "Stock Card - Paraformaldehyde Inventory System, PT. Dover Chemical",
   icons: {
     icon: "/icon.png",
   },
 };
 
 export default function RootLayout({
-  children, 
+  children,
 }: {
   children: React.ReactNode;
 }) {
