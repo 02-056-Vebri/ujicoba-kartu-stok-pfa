@@ -7,8 +7,8 @@ import { getItem, setItem, deleteItem } from "./appStorage";
 // ---------- Data produk (diambil dari STOCK_CARD_PFA_DES_2025.xlsx) ----------
 const RAW_PRODUCTS = [
   "PFA 86% ZAK25", "PFA 88% ZAK25",
-  "PFA 92% ZAK25", "PFA 92% ZAK25 KITE", "PFA 92% JB500", "PFA 92% JB500 KITE",
-  "PFA 92% JB300", "PFA 92% JB300 KITE", "PFA 92% JB1000", "PFA 92% JB1000 KITE",
+  "PFA 92% ZAK25", "PFA 92% ZAK25 KITE", "PFA 92% JB300", "PFA 92% JB300 KITE",
+  "PFA 92% JB500", "PFA 92% JB500 KITE", "PFA 92% JB1000", "PFA 92% JB1000 KITE",
   "PFA 96% ZAK25", "PFA 96% ZAK25 KITE", "PFA 96% JB450", "PFA 96% JB450 KITE",
   "PFA 96% JB500", "PFA 96% JB500 KITE", "PFA 96% JB1000", "PFA 96% JB1000 KITE",
   "PFA 97% ZAK20 KITE", "PFA 97% ZAK500 KITE",
@@ -1131,11 +1131,16 @@ export default function KartuStokPFA() {
         .ks-login-theme .ks-login-form label { text-align: left; }
         .ks-login-theme .ks-btn { border-radius: 12px; }
         .ks-login-theme .ks-btn:not(.ghost) {
-          background: var(--accent); border: 1px solid var(--accent); color: #ffffff; font-weight: 500;
+          background: #fff; border: 1px solid var(--border); color: #111827; font-weight: 500;
+          transition: all .15s ease;
         }
-        .ks-login-theme .ks-btn:not(.ghost):hover { filter: brightness(1.1); }
-        .ks-login-theme .ks-btn.ghost { background: #fff; color: #111827; border: 1px solid var(--border); font-weight: 500; }
-        .ks-login-theme .ks-btn.ghost:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .ks-login-theme .ks-btn:not(.ghost):hover,
+        .ks-login-theme .ks-btn:not(.ghost):active {
+          background: var(--accent); border-color: var(--accent); color: #fff;
+        }
+        .ks-login-theme .ks-btn.ghost { background: #fff; color: #111827; border: 1px solid var(--border); font-weight: 500; transition: all .15s ease; }
+        .ks-login-theme .ks-btn.ghost:hover,
+        .ks-login-theme .ks-btn.ghost:active { background: var(--accent); border-color: var(--accent); color: #fff; }
         .ks-login-theme .ks-btn.ks-add-product-btn { border-radius: 6px; }
         .ks-login-theme .ks-login-form-actions { gap: 12px; }
         .ks-login-theme .ks-login-form-actions .ks-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; }
