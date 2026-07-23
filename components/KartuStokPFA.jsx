@@ -982,6 +982,7 @@ export default function KartuStokPFA() {
           padding: 9px 0 !important; width: 9ch !important; color: var(--accent) !important;
           font-family: 'JetBrains Mono', monospace !important; font-size: 15px !important; font-weight: 600 !important; }
         .ks-kg-input:focus { outline: none; }
+        .ks-kg-input::placeholder { color: var(--accent); opacity: 1; }
         .ks-kg-suffix { font-family: 'JetBrains Mono', monospace; font-size: 15px; color: var(--accent);
           font-weight: 600; flex-shrink: 0; }
         .ks-kg-display .ks-hint { margin-top: 2px; }
