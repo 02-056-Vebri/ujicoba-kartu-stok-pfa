@@ -41,7 +41,7 @@ function buildProduct(name) {
 }
 const BASE_PRODUCTS = RAW_PRODUCTS.map(buildProduct);
 
-const MONTHS_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+const MONTHS_ID = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MONTHS_ID_FULL = [
   "JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI",
   "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER",
@@ -1400,7 +1400,7 @@ export default function KartuStokPFA() {
                     <button className="ks-cal-nav-btn" onClick={goNextYear} title="Tahun berikutnya">»</button>
                   </div>
                   <div className="ks-cal-weekdays">
-                    {["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"].map((w) => (
+                    {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((w) => (
                       <div key={w} className="ks-cal-weekday">{w}</div>
                     ))}
                   </div>
